@@ -9,7 +9,14 @@ En la industria manufacturera de plásticos, monitorear la estabilidad del proce
 Desde la perspectiva del Machine Learning, este proyecto no se aborda como un *Forecasting* clásico (Sequence-to-Sequence), sino que se formula formalmente como una **Regresión Extrínseca de Series Temporales (Sequence-to-Scalar)** bajo un enfoque **Multi-Output**. En este paradigma, el modelo asimila una secuencia temporal multivariada (los primeros 3 segundos de la curva de presión) para extraer la dinámica y memoria del fluido. Posteriormente, proyecta ese contexto latente hacia un espacio tabular para predecir de forma anticipada 8 escalares estáticos que representan el estado final de la máquina (tiempos totales, presiones máximas y consumo energético), previniendo fallos antes de que el ciclo concluya.
 
 ## 2. Dataset utilizado
-*(Mantener la sección 2 exactamente igual que la versión anterior)*
+Los datos provienen del **"Injection Molding Dataset"** publicado por el German Plastics Center (SKZ). 
+* **Descripción:** Registros de experimentos de moldeo por inyección utilizando material ABS.
+* **Archivos principales:** 
+  * `viscometer_pressure_data.parquet`: Serie temporal de alta resolución de las presiones dependientes del tiempo.
+  * `quality_table_data.parquet`: Parámetros finales del ciclo medidos por los sensores internos de la máquina.
+* **Variables empleadas:** 
+  * **Features (X):** Series temporales de presión frontal (`MEAS_pressure_frontsensor_bar`), trasera (`MEAS_pressure_backsensor_bar`) y su diferencia (`MEAS_pressure_difference_bar`).
+  * **Targets (Y - 8 variables):** Tiempo de Ciclo, Tiempo de Plastificación, Presión de Conmutación, Presión Máxima de Masa, Integral de Presión, Potencia Máxima, Contrapresión Máxima y Energía Consumida.
 
 ## 3. Metodología aplicada
 El flujo de trabajo se estructuró de forma modular para garantizar la integridad científica y aislar el espacio de las secuencias temporales (X) del espacio tabular predictivo (Y), evitando el *data leakage*:
