@@ -3,31 +3,22 @@
 **Autor:** 
 * Juan Miguel Martínez Muñoz
 
-## 1. Descripción del problema
+## 1. Descripción y Formulación Matemática del Problema
 En la industria manufacturera de plásticos, monitorear la estabilidad del proceso de moldeo por inyección es crucial para evitar defectos irreversibles en las piezas y asegurar la integridad mecánica del equipo. Históricamente, la validación se realiza tras finalizar el ciclo o mediante simuladores por Elementos Finitos (FEM) de alto costo computacional. 
 
-Este proyecto propone implementar modelos de Inteligencia Artificial (Machine Learning y Deep Learning) como "modelos sustitutos" (*Surrogate Models*). El objetivo evolucionó hacia un enfoque **Multi-Output**: predecir simultáneamente 8 parámetros críticos de la máquina (tiempos, presiones y consumos) utilizando únicamente las series temporales de presión del viscosímetro recolectadas durante la fase inicial de inyección. Esto permite anticipar el comportamiento de la máquina antes de que el ciclo termine.
+Desde la perspectiva del Machine Learning, este proyecto no se aborda como un *Forecasting* clásico (Sequence-to-Sequence), sino que se formula formalmente como una **Regresión Extrínseca de Series Temporales (Sequence-to-Scalar)** bajo un enfoque **Multi-Output**. En este paradigma, el modelo asimila una secuencia temporal multivariada (los primeros 3 segundos de la curva de presión) para extraer la dinámica y memoria del fluido. Posteriormente, proyecta ese contexto latente hacia un espacio tabular para predecir de forma anticipada 8 escalares estáticos que representan el estado final de la máquina (tiempos totales, presiones máximas y consumo energético), previniendo fallos antes de que el ciclo concluya.
 
 ## 2. Dataset utilizado
-Los datos provienen del **"Injection Molding Dataset"** publicado por el German Plastics Center (SKZ). 
-* **Descripción:** Registros de experimentos de moldeo por inyección utilizando material ABS.
-* **Archivos principales:** 
-  * `viscometer_pressure_data.parquet`: Serie temporal de alta resolución de las presiones dependientes del tiempo.
-  * `quality_table_data.parquet`: Parámetros finales del ciclo medidos por los sensores internos de la máquina.
-* **Variables empleadas:** 
-  * **Features (X):** Series temporales de presión frontal (`MEAS_pressure_frontsensor_bar`), trasera (`MEAS_pressure_backsensor_bar`) y su diferencia (`MEAS_pressure_difference_bar`).
-  * **Targets (Y - 8 variables):** Tiempo de Ciclo, Tiempo de Plastificación, Presión de Conmutación, Presión Máxima de Masa, Integral de Presión, Potencia Máxima, Contrapresión Máxima y Energía Consumida.
+*(Mantener la sección 2 exactamente igual que la versión anterior)*
 
 ## 3. Metodología aplicada
-El flujo de trabajo se estructuró de forma modular en tres etapas para garantizar reproducibilidad e integridad científica (evitando el *data leakage*):
+El flujo de trabajo se estructuró de forma modular para garantizar la integridad científica y aislar el espacio de las secuencias temporales (X) del espacio tabular predictivo (Y), evitando el *data leakage*:
 
-1. **Notebook 1 (Preprocesamiento):** Carga de datos `.parquet`, limpieza, cálculo de la variable de diferencia de presión y unificación de datos secuenciales con targets tabulares. Exportación de datos crudos limpios.
+1. **Notebook 1 (Preprocesamiento):** Carga de datos `.parquet`, truncamiento temporal a los primeros 3 segundos (fase activa de inyección que concentra la varianza dinámica antes de la etapa asintótica de enfriamiento), y unificación de las trayectorias con los *targets* escalares finales.
 2. **Notebook 2 (Modelado y Optimización):** 
-   * Partición estricta de datos (`train_test_split` con semilla fija).
-   * **Machine Learning:** Extracción de características estadísticas (media, desviación estándar, máximo, mínimo, integral trapezoidal) de las series y escalado (`StandardScaler`). Optimización de hiperparámetros vía `GridSearchCV`.
-   * **Deep Learning:** Construcción de tensores tridimensionales, con escalado asimétrico adaptado a series temporales.
-   * Serialización de modelos y escaladores (`.joblib`, `.pth`).
-3. **Notebook 3 (Evaluación):** Inferencia sobre un set de prueba aislado y generación de métricas y visualizaciones comparativas.
+   * **Machine Learning Clásico (Baseline Extrínseco):** Extracción de características estadísticas estáticas (media, desviación estándar, máximo, integral trapezoidal) sobre la ventana de 3 segundos para entrenar ensambles arbóreos (`MultiOutputRegressor` con XGBoost y Random Forest).
+   * **Deep Learning Temporal:** Inyección directa de la matriz secuencial pura (3 canales x ~30,000 timesteps) en arquitecturas CNN-LSTM y FCN para extracción automática de características espaciotemporales, adaptando una capa *Fully Connected* en la salida para la regresión escalar.
+3. **Notebook 3 (Evaluación):** Inferencia sobre un set de prueba asimétrico y generación de gráficos de dispersión (Scatter Plots) para medir la distancia entre la predicción escalar escalar y el *ground truth* del sensor físico.
 
 ## 4. Arquitecturas implementadas
 Para este análisis, se contrastaron modelos basados en árboles y arquitecturas de aprendizaje profundo:
